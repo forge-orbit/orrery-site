@@ -1,0 +1,90 @@
+---
+title: Backup & restore
+description: Back up and restore Orrery's PostgreSQL 18 database, preserve ORRERY_ENCRYPTION_KEY, and roll back failed upgrades safely.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Orrery stores all application state in the Compose `postgres` service (`postgres:18`) on the `pgdata` volume. Run all commands below from your Orrery directory where `compose.yaml` and `.env` live.
+
+<Aside type="caution" title="Back up .env separately — especially ORRERY_ENCRYPTION_KEY">
+  A `pg_dump` contains encrypted SMTP passwords and webhook signing secrets, **not** the encryption key. If you restore a dump with a missing or different `ORRERY_ENCRYPTION_KEY`, saved SMTP credentials and webhook secrets cannot be decrypted. Always store `.env` (or at least `ORRERY_ENCRYPTION_KEY`, `POSTGRES_PASSWORD`, and `ORRERY_VERSION`) in secure storage alongside every dump.
+</Aside>
+
+## Create a backup
+
+`pg_dump` takes a consistent snapshot while Orrery stays online — no downtime is needed:
+
+```sh
+docker compose exec -T postgres pg_dump -U orrery -d orrery -Fc > "orrery-$(date +%Y%m%d-%H%M%S).dump"
+```
+
+- `-Fc` creates a portable, compressed custom-format archive.
+- `-T` disables pseudo-TTY allocation so binary output is never corrupted.
+
+Verify the archive is readable before moving it to off-host storage:
+
+```sh
+docker compose exec -T postgres pg_restore -l < orrery-20261122-040000.dump | head
+```
+
+## Restore from a backup
+
+Restoring replaces the entire `orrery` database. Stop the app container first so no writes race the restore, while keeping `postgres` running.
+
+<Aside type="danger" title="Never run docker compose down -v">
+  The `-v` flag deletes the `pgdata` volume permanently. Keep Postgres running and replace only the database inside it.
+</Aside>
+
+```sh
+docker compose stop orrery
+docker compose exec -T postgres psql -U orrery -d postgres -c 'DROP DATABASE IF EXISTS orrery WITH (FORCE);'
+docker compose exec -T postgres psql -U orrery -d postgres -c 'CREATE DATABASE orrery;'
+docker compose exec -T postgres pg_restore -U orrery -d orrery --no-owner --no-privileges < orrery-backup.dump
+docker compose start orrery
+```
+
+`WITH (FORCE)` drops any stray database connections cleanly, and `--no-owner --no-privileges` ensures portability across fresh Postgres volumes.
+
+## Verify the restore
+
+<Steps>
+
+1. **Check tables and health probes**
+
+   ```sh
+   docker compose exec -T postgres psql -U orrery -d orrery -c '\dt'
+   curl -fsS http://localhost:8080/healthz
+   curl -fsS http://localhost:8080/readyz
+   ```
+
+2. **Spot-check application data**
+
+   Sign in at `PUBLIC_URL` and check a known project, issue identifier (`KEY-N`), and activity timeline.
+
+3. **Verify encrypted secrets**
+
+   Open installation SMTP settings (and Workspace Webhooks if configured) to confirm encrypted secrets decrypt cleanly under your restored `ORRERY_ENCRYPTION_KEY`.
+
+4. **Check logs**
+
+   ```sh
+   docker compose logs -f orrery
+   ```
+
+</Steps>
+
+## Upgrade & rollback checklist
+
+Follow this sequence for every `ORRERY_VERSION` upgrade:
+
+1. Record the currently running `ORRERY_VERSION` tag and take a fresh backup verified with `pg_restore -l`.
+2. Confirm your `.env` copy containing `ORRERY_ENCRYPTION_KEY` is stored safely alongside the dump.
+3. Update `ORRERY_VERSION` in `.env`, then run `docker compose pull orrery && docker compose up -d orrery`.
+4. Verify `/healthz`, `/readyz`, and sign in to spot-check a project.
+5. **If anything goes wrong, roll back in this exact order** so the newer image never boots against the restored database:
+   - Run `docker compose stop orrery` and keep it stopped.
+   - Restore the pre-upgrade dump using the drop / create / `pg_restore` commands above (do **not** start `orrery` yet).
+   - Set `ORRERY_VERSION` back to the previous tag in `.env`.
+   - Run `docker compose pull orrery && docker compose up -d orrery`.
+   - Repeat the verification checks.

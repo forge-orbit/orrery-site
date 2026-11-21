@@ -1,0 +1,67 @@
+---
+title: Claude Code plugin
+description: Install the official Orrery plugin for Claude Code to enable /mcp tools, automatic run-lifecycle hooks, and live inbox waiting.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+The official Claude Code plugin lives in [`forge-orbit/orrery-integrations`](https://github.com/forge-orbit/orrery-integrations) (MIT licensed, zero external dependencies, requires Node.js 22+).
+
+It configures three things automatically:
+1. **Static `/mcp` access** to all 39 Orrery MCP tools.
+2. **Automatic run-lifecycle reporting** via Orrery's `orrery.run.hook.v1` contract (`POST /api/runs/hook`), so every Claude Code conversation and subagent appears live in Orrery's Agents panel.
+3. **Live inbox waiting (`orrery_wait_for_input`)** so Claude Code can wait for your answer in the Needs-input inbox while keeping its five-minute Claim lease alive.
+
+## Install
+
+<Steps>
+
+1. **Export your Orrery URL and agent API key**
+
+   Add these to the shell profile Claude Code inherits (or use `ORRERY_API_KEY_FILE` to point to a chmod-600 key file):
+
+   ```sh
+   export ORRERY_URL="https://orrery.example.com"
+   export ORRERY_API_KEY="orr_ak_..."
+   # or: export ORRERY_API_KEY_FILE="$HOME/.config/orrery/agent.key"
+   ```
+
+2. **Add the Forge Orbit marketplace and install the plugin**
+
+   Inside Claude Code, run:
+
+   ```text
+   /plugin marketplace add forge-orbit/orrery-integrations
+   /plugin install orrery@forge-orbit
+   ```
+
+3. **Verify**
+
+   Ask Claude Code to run `list_projects` or `ready_work`. You should also see the active Claude Code run appear in Orrery's **Agents** panel with the Claude Code brand badge and model metadata.
+
+</Steps>
+
+## Live inbox replies (`orrery_wait_for_input`)
+
+When Claude Code claims an issue and calls `ask_for_input`, it can follow up with `orrery_wait_for_input`:
+- The plugin polls for your Needs-input inbox reply and **automatically renews the matching Claim lease** while waiting.
+- Each wait call lasts up to ~20 seconds under normal network conditions; Claude Code can call it again in the same turn while waiting.
+- Keep Claude Code running while waiting (or resume the conversation later to pick up the answer).
+
+## Privacy & failure guarantees
+
+<Aside type="tip" title="Prompts and transcripts never leave your laptop">
+  - **Allowlisted metadata only:** Lifecycle hooks transmit only event names, session/subagent IDs, timestamps, and optional model/version strings. Private prompts, transcripts, tool inputs, and tool outputs are never read or sent.
+  - **Non-blocking:** Hooks always exit `0`, write nothing to stdout, and swallow network or timeout errors — an unreachable Orrery server never interrupts or slows down your coding session.
+</Aside>
+
+## Migrating from `orrery@orrery`
+
+If you installed an earlier version from the old `orrery` marketplace, switch to `orrery@forge-orbit`:
+
+```sh
+claude plugin uninstall orrery@orrery --keep-data
+claude plugin marketplace remove orrery
+```
+
+Then run the two `/plugin` install commands above. Your existing `ORRERY_URL` and `ORRERY_API_KEY` continue working unchanged.

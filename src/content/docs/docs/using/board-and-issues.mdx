@@ -1,0 +1,57 @@
+---
+title: Board, issues & knowledge
+description: Organize work with the six-column Kanban board, KEY-N issues, subtasks, acyclic dependencies, labels, Markdown + Mermaid, project knowledge, and 30-day Trash.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Each Orrery project combines a fast Kanban board with structured issue metadata and lightweight project-scoped Markdown knowledge so both humans and agents share the same context.
+
+## Six-column Kanban board
+
+Every project board has six columns matching the fixed issue workflow:
+
+1. **Backlog**
+2. **Todo**
+3. **In progress**
+4. **Review**
+5. **Done**
+6. **Cancelled**
+
+On the board you can:
+- **Drag and drop** cards across columns or reorder cards within a column (backed by float `sortOrder`).
+- **Filter & search instantly** by keyword, status, assignee, priority, or project labels.
+- **Spot blockers & active agents at a glance** with blocker indicators, live Claim lease badges, and a **sidecar session preview drawer** that opens without leaving the board.
+
+## Issues, subtasks & dependencies
+
+Every issue receives a readable `KEY-N` identifier (like `ORR-42`) derived from its project key.
+
+- **Priority & assignees:** Assign issues to Humans (while Agents claim them dynamically via Work sessions).
+- **One-level subtasks:** Break an issue into child subtasks (`parentIssueId`). Subtasks live on the same board and can be claimed independently by agents or humans. Closing a parent issue while subtasks remain open triggers a **close-guard warning**.
+- **Acyclic `blocked_by` dependencies:** Link prerequisite issues with `blocked_by`. Orrery rejects dependency cycles in PostgreSQL and automatically excludes blocked issues from an agent's `ready_work` queue until every prerequisite is resolved.
+- **Structured links:** Attach typed links to pull requests, commits, docs, or external URLs (`add_issue_link`).
+- **Rich Markdown & Mermaid:** Issue descriptions and comments support GitHub-flavored Markdown, automatic `#issue` linking, and **Light/Dark Mermaid diagrams**.
+
+## Project labels
+
+Create color-coded labels scoped to each project with preset color swatches and live preview. Attach multiple labels to any issue (from the UI, REST API, or MCP `attach_issue_label`) and filter the board by label.
+
+## Project knowledge
+
+Every project includes a **Knowledge** section for structured Markdown entries — architecture notes, conventions, runbooks, or product decisions your team wants agents to read before writing code.
+
+- Humans read and edit knowledge entries directly in the web UI.
+- Agents with `Read` access call `list_knowledge` and `get_knowledge`; agents with `Contribute` access can also write back what they learned with `create_knowledge` and `update_knowledge`.
+
+<Aside type="note" title="No separate Obsidian vault required">
+  Orrery intentionally focuses on lightweight project-scoped Markdown knowledge rather than a full wiki/vault. Post-MVP agent-memory upgrades (full-text search, doc↔issue linking, and knowledge Trash) are tracked in [`#140`](https://github.com/forge-orbit/orrery/issues/140).
+</Aside>
+
+## Human-only Trash (30-day restore)
+
+Deleting an issue moves it to **Trash** rather than wiping it immediately:
+
+- **Human-only:** Agents cannot delete issues or access Trash.
+- **30-day recovery window:** Project managers can restore trashed issues within 30 days with their comments, labels, and `KEY-N` identifier intact.
+- **Automatic scrubbing:** After 30 days, Orrery scrubs sensitive content in place while preserving the `KEY-N` identifier and audit history integrity.

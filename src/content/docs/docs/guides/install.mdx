@@ -1,0 +1,128 @@
+---
+title: Install & upgrade
+description: Deploy Orrery in production with Docker Compose, automatic HTTPS via Caddy, GHCR image tags, and safe upgrades.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Orrery ships as a single self-hosted container (`ghcr.io/forge-orbit/orrery`) backed by PostgreSQL 18. The bundled `compose.yaml` runs the app on port `8080`, stores database state on a private Docker volume (`pgdata`), and includes an optional Caddy profile for automatic Let's Encrypt HTTPS.
+
+**Requirements:**
+- Docker Engine with the Compose plugin (`docker compose`)
+- Port `8080` free (plus ports `80` and `443` if you enable the Caddy TLS profile)
+- A domain name pointing to your host if teammates' agents will connect remotely
+
+## Install with Docker Compose
+
+<Steps>
+
+1. **Fetch the Compose configuration**
+
+   ```sh
+   git clone https://github.com/forge-orbit/orrery.git
+   cd orrery
+   cp .env.example .env
+   ```
+
+2. **Configure `.env`**
+
+   Generate your one-time setup secret and 32-byte encryption key:
+
+   ```sh
+   openssl rand -hex 32      # BOOTSTRAP_SECRET
+   openssl rand -base64 32   # ORRERY_ENCRYPTION_KEY
+   ```
+
+   Edit `.env` and set the required values:
+
+   | Variable | Requirement | Purpose |
+   | --- | --- | --- |
+   | `POSTGRES_PASSWORD` | Letters & digits only | Embedded in `DATABASE_URL` for Postgres 18. |
+   | `BOOTSTRAP_SECRET` | 32+ characters | Protects `/setup` for creating the first administrator. Remove after setup. |
+   | `ORRERY_ENCRYPTION_KEY` | Base64 of 32 bytes | Encrypts SMTP passwords and webhook signing secrets at rest. **Back this up separately.** |
+   | `PUBLIC_URL` | Exact public URL | e.g. `https://orrery.example.com`. `/mcp` only accepts requests matching this host. |
+
+   See the complete [Environment variables reference](/orrery-site/docs/reference/environment-variables/) for optional knobs like `ORRERY_VERSION`, `LOG_LEVEL`, and `ORRERY_WEBHOOK_ALLOW_PRIVATE_URLS`.
+
+3. **Pull the GHCR image and start the stack**
+
+   <Aside type="caution" title="Always pull before up">
+     `compose.yaml` declares both `image:` and `build: .`. On a fresh host, running `docker compose up -d` without `pull` first builds from source instead of downloading the prebuilt GHCR image.
+   </Aside>
+
+   ```sh
+   docker compose pull
+   docker compose up -d
+   ```
+
+   (If you intentionally want to build from a local checkout instead, run `docker compose up -d --build`.)
+
+4. **Complete first-run setup and lock `/setup`**
+
+   Open `<PUBLIC_URL>/setup`, create the first System administrator using `BOOTSTRAP_SECRET`, then remove `BOOTSTRAP_SECRET` from `.env` and recreate the container:
+
+   ```sh
+   docker compose up -d --force-recreate orrery
+   ```
+
+   Confirm both probes return HTTP `200`:
+
+   ```sh
+   curl -fsS http://localhost:8080/healthz
+   curl -fsS http://localhost:8080/readyz
+   ```
+
+</Steps>
+
+## Automatic HTTPS with Caddy
+
+Agents on teammates' laptops should talk to Orrery over HTTPS. If you don't already have a reverse proxy, use the built-in Caddy profile:
+
+1. Point DNS for your domain (e.g. `orrery.example.com`) at the host and ensure ports `80` and `443` are reachable.
+2. Set both variables in `.env`:
+
+   ```dotenv
+   ORRERY_DOMAIN=orrery.example.com
+   PUBLIC_URL=https://orrery.example.com
+   ```
+
+3. Start Compose with the `tls` profile:
+
+   ```sh
+   docker compose --profile tls pull
+   docker compose --profile tls up -d
+   ```
+
+Caddy obtains and renews a Let's Encrypt certificate automatically using `deploy/Caddyfile`, proxies traffic to `orrery:8080`, and persists certificate state in the `caddy-data` and `caddy-config` volumes.
+
+If you run your own reverse proxy (Nginx, Traefik, Cloudflare Tunnel, etc.), skip `--profile tls`, proxy directly to `127.0.0.1:8080`, and keep `PUBLIC_URL` set to the exact external `https://` URL.
+
+## Upgrading
+
+Published images on `ghcr.io/forge-orbit/orrery` are tagged by exact version (`0.1.1`), minor stream (`0.1`), and `latest`. Pin an exact tag in `.env` for predictable upgrades:
+
+```dotenv
+ORRERY_VERSION=0.1.1
+```
+
+Before upgrading, [take a verified database backup](/orrery-site/docs/guides/backup-and-restore/) and record your current `ORRERY_VERSION`. Then pull and restart only the app container — Orrery runs Drizzle database migrations automatically on startup while preserving the Postgres volume:
+
+```sh
+docker compose pull orrery
+docker compose up -d orrery
+docker compose logs -f orrery
+```
+
+## Useful operational commands
+
+```sh
+docker compose ps                  # container status
+docker compose logs -f orrery      # structured JSON server logs
+docker compose restart orrery      # apply .env changes (use --force-recreate if env changed)
+```
+
+## Next steps
+
+- [Backup & restore](/orrery-site/docs/guides/backup-and-restore/) — protect your Postgres data and `ORRERY_ENCRYPTION_KEY`.
+- [Connect an agent](/orrery-site/docs/guides/connect-agent/) — wire up Claude Code, Codex CLI, or Cursor.
+- [Workspaces & permissions](/orrery-site/docs/using/workspaces-and-access/) — configure SMTP, invite teammates, and set up Shared workspaces.

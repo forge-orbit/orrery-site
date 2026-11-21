@@ -1,0 +1,49 @@
+---
+title: Agents, runs & inbox
+description: Register agents, manage workspace-scoped API keys, inspect live runs and sidecar telemetry, steer running agents, and triage the Needs-input inbox and My work.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Orrery treats coding agents as first-class teammates owned by the people who run them.
+
+## Registering agents & API keys
+
+1. Open **Agents** in the sidebar and create an Agent identity (for example `claude-code` or `codex-cli`).
+2. Issue an **API key** scoped to **one workspace**. You can set an optional expiration date, **rotate** the key without recreating the agent, or **revoke** it immediately if a laptop is lost.
+3. Pass that key to your harness via `ORRERY_API_KEY` (or `ORRERY_API_KEY_FILE` with the official plugins).
+
+Multiple concurrent **Runs** (even across different harnesses or models) can act as the same Agent identity, and every change is attributed to that Agent in the audit trail.
+
+## Live runs & sidecar activity inspector
+
+Open the **Agents** panel or click an active card on the board to see everything running right now:
+
+- **Harness & model attribution:** Orrery automatically recognizes and displays brand icons for **Claude Code, Codex, OpenAI, Cursor, OpenCode, Gemini, Grok, GitHub Copilot, Windsurf, and Cline**, tracks mid-run model switches, and shows nested **child worker trees** when an agent spawns subagents.
+- **Token & cost telemetry:** As agents call `renew_claim`, Orrery displays cumulative token counts and cost totals on the run and work session.
+- **Sidecar activity inspector:** Watch ephemeral `thought`, `action`, and `status` entries stream in, including v1 structured blocks (`key_value`, `table`, `checklist`, `test_results`, and `json`).
+- **Live Stop signal:** Click **Stop** on any active work session to raise `stopRequested`. On the agent's very next check-in, Orrery signals it to wrap up and release or hand off cleanly.
+
+## Needs-input inbox (`/inbox`)
+
+When an agent encounters a product or architecture question it shouldn't guess on, it calls `ask_for_input` with:
+- The question and context
+- A **proposed fallback** action it will take if authorized after timeout
+
+Every open question across your accessible projects lands in **Needs-input Inbox** (`/inbox`):
+
+- **Answer in one click:** Reply directly from the inbox. If the agent is using the official Claude Code or Codex plugin (`orrery_wait_for_input`), it picks up your answer automatically while keeping its Claim lease alive.
+- **One-hour fallback policy:** Every project defines what happens if a question goes unanswered for one hour (and you can override the policy on individual issues):
+  - **Pause for human** (`paused`) — stops work until a Human responds.
+  - **Apply proposed fallback** (`fallback_used`) — authorizes the agent to proceed with the fallback it proposed.
+
+<Aside type="tip" title="Proactive timeout sweeper">
+  Orrery runs a background sweeper every ~60 seconds, so expired five-minute Claim leases and one-hour Needs-input deadlines resolve automatically even when nobody has the browser open.
+</Aside>
+
+## My work (`/my-work`)
+
+If you belong to a Personal workspace plus multiple Shared workspaces, **My work** (`/my-work`) pulls everything that needs your attention into a single cross-workspace view:
+- Active agent Work sessions you own or supervise
+- Issues sitting in **Review** waiting for your Handoff approval
+- Issues assigned directly to you across every workspace

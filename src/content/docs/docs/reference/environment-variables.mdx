@@ -1,0 +1,42 @@
+---
+title: Environment variables
+description: Complete .env reference for self-hosting Orrery with Docker Compose, automatic Caddy HTTPS, encryption at rest, and outgoing webhooks.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Orrery reads configuration from `.env` alongside `compose.yaml`. Copy `.env.example` to `.env` before starting the stack.
+
+## Required for every installation
+
+| Variable | Format / example | Description |
+| --- | --- | --- |
+| `POSTGRES_PASSWORD` | Letters & digits only (e.g. `changeMe1234`) | Password for the `orrery` PostgreSQL 18 user. Must contain only letters and digits because it is embedded directly in `DATABASE_URL`. |
+| `PUBLIC_URL` | `http://localhost:8080` or `https://orrery.example.com` | Exact URL humans and agents use to reach Orrery. The `/mcp` endpoint validates incoming requests against this host. |
+| `ORRERY_ENCRYPTION_KEY` | Base64 of 32 bytes (`openssl rand -base64 32`) | AES-256-GCM key encrypting instance SMTP passwords and webhook signing secrets at rest. **Back up separately from Postgres dumps.** |
+
+## First-run setup (remove after `/setup`)
+
+| Variable | Format / example | Description |
+| --- | --- | --- |
+| `BOOTSTRAP_SECRET` | 32+ random characters (`openssl rand -hex 32`) | One-time secret protecting `/setup` when creating the first System administrator. Remove from `.env` and recreate the `orrery` container once setup finishes. |
+
+## Production, HTTPS & webhooks
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `ORRERY_DOMAIN` | _(unset)_ | Public hostname for the optional Caddy TLS profile (`docker compose --profile tls up -d`). Set `PUBLIC_URL=https://<ORRERY_DOMAIN>` alongside it. |
+| `ORRERY_VERSION` | `latest` | GHCR image tag (`ghcr.io/forge-orbit/orrery`), e.g. `0.1.1` or `0.1`. Pin an exact tag for reproducible upgrades. |
+| `ORRERY_WEBHOOK_ALLOW_PRIVATE_URLS` | `false` | Set to `true` **only** if outgoing webhooks must deliver to internal LAN services. Permits private/loopback IPs and `http://` URLs; default-deny blocks them at DNS resolution time. |
+| `LOG_LEVEL` | `info` | Structured JSON log verbosity on stdout: `debug`, `info`, `warn`, or `error`. |
+
+## Local development & testing only
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `DATABASE_URL` | `postgres://orrery:<pw>@localhost:5432/orrery` | Used by `pnpm dev` on your host to talk to the Compose Postgres container. |
+| `MAILPIT_HTTP_PORT` | `8025` | Host port for the Mailpit test SMTP catcher when running `docker compose --profile mail-test up -d`. |
+
+<Aside type="caution" title="Apply .env changes cleanly">
+  Docker Compose only reloads edited `.env` values when the container is recreated. Run `docker compose up -d --force-recreate orrery` after changing any environment variable.
+</Aside>

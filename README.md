@@ -18,12 +18,10 @@
 
 ## What lives here
 
-- **The landing page**: what Orrery is, how agents and humans work together on one board, and how to self-host and connect agents.
-- **The docs site (`/docs/`)**: product guides, ADRs, and design docs live in the main repo under
-  [`docs/`](https://github.com/forge-orbit/orrery/tree/main/docs), next to the code they describe,
-  and are pulled in here at build time.
+- **The landing page**: what Orrery is, how agents and humans work together on one board, harness integrations, and how to self-host.
+- **The user docs site (`/docs/`)**: user-first guides (Quickstart, Install, Using Orrery, Agent Integrations) live in `src/content/docs/docs/` using Starlight MDX. Machine-verified Reference pages (all 39 MCP tools and 123 REST endpoints) are generated at build time from `forge-orbit/orrery/contract/`.
 
-The product code, roadmap and design discussions live in
+Product source code, engineering ADRs, design specs, and TLA+ models live in
 [forge-orbit/orrery](https://github.com/forge-orbit/orrery).
 
 ## Develop
@@ -42,34 +40,38 @@ Page copy that describes the product (features, MCP tools, milestones and links)
 
 ```
 src/
-  pages/index.astro      the landing page, one component per section
-  components/            Header, Hero, Problem, HowItWorks, Features, Architecture,
-                         Integrations, SelfHosted, Roadmap, GetInvolved, Footer
-  data/site.ts           product copy and links to forge-orbit/orrery
-  styles/global.css      design tokens (colors from the logo, type, spacing)
-  content.config.ts      Starlight docs collection
-public/                  favicon and logo marks
-scripts/sync-docs.mjs    copies docs/ from forge-orbit/orrery before dev and build
-docs-placeholder/        fallback docs if upstream docs/ is unavailable
+  pages/index.astro         the landing page, one component per section
+  components/               Header, Hero, Problem, HowItWorks, Features, Architecture,
+                            Integrations, SelfHosted, Roadmap, GetInvolved, Footer
+  content/docs/docs/        user-first Starlight documentation (MDX)
+    guides/                 Quickstart, Install & upgrade, Backup & restore, Connect an agent
+    using/                  Core concepts, Workspaces, Board & issues, Agents & inbox, Webhooks
+    integrations/           Claude Code & Codex CLI plugin guides
+    reference/              Environment variables + auto-generated MCP & REST references
+  data/site.ts              product copy and links to forge-orbit/orrery
+  styles/global.css         design tokens (colors from the logo, type, spacing)
+  content.config.ts         Starlight docs collection
+public/                     favicon and logo marks
+scripts/sync-docs.mjs       generates reference/mcp-tools.md & rest-api.md from forge-orbit/orrery/contract/
 ```
 
 ## Docs
 
-The docs at `/docs/` are built with [Starlight](https://starlight.astro.build). The pages are not
-written here: they live in [forge-orbit/orrery](https://github.com/forge-orbit/orrery) under `docs/`,
-next to the code. Before every `dev` and `build`,
-[`scripts/sync-docs.mjs`](scripts/sync-docs.mjs) clones that folder and copies it to
-`src/content/docs/docs/` (generated, not committed), excluding internal `docs/agents/` and
-`docs/formal/` directories. Plain GitHub-style Markdown works: a `# Heading` becomes the page
-title, `README.md` becomes a folder's index, relative `.md` links are rewritten to page URLs, and
-links escaping `docs/` are rewritten to GitHub blob URLs.
+The docs at `/docs/` are built with [Starlight](https://starlight.astro.build) and curated strictly
+for Orrery users and self-hosters (internal contributor ADRs and design specs stay in
+[forge-orbit/orrery/docs](https://github.com/forge-orbit/orrery/tree/main/docs)).
+
+Before every `dev` and `build`, [`scripts/sync-docs.mjs`](scripts/sync-docs.mjs) fetches
+`contract/mcp-tools.json` and `contract/openapi.json` from `forge-orbit/orrery` and generates
+`src/content/docs/docs/reference/mcp-tools.md` and `rest-api.md` (gitignored, always in sync with
+the shipped server).
 
 | Variable | Use |
 | --- | --- |
-| `DOCS_SOURCE=../orrery` | Use a local checkout instead of cloning, to preview docs changes |
+| `DOCS_SOURCE=../orrery` | Read `contract/*.json` from a local checkout instead of cloning |
 | `DOCS_REPO`, `DOCS_REF` | Clone another repo or branch (default: forge-orbit/orrery, `main`) |
 
-On CI a failed clone fails the build, so a network problem can't publish the placeholder by mistake.
+On CI a failed clone fails the build, so a network problem can't publish stale fallback reference pages.
 
 ## Deploy
 

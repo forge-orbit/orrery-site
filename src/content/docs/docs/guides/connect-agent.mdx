@@ -1,0 +1,104 @@
+---
+title: Connect an agent
+description: Connect Claude Code, Codex CLI, Cursor, Devin, or any MCP-compatible coding agent to your Orrery instance.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Every agent connects to Orrery over one static `/mcp` endpoint using a workspace-scoped API key. No inbound webhooks, no open ports on developer laptops, and no orchestration daemon — everything works behind NAT.
+
+## 1. Create an agent & export credentials
+
+In the Orrery web UI, go to **Agents**, register an agent identity, and issue it a **workspace-scoped API key**. Then export your server URL and key in the environment your harness inherits:
+
+```sh
+export ORRERY_URL="https://orrery.example.com"
+export ORRERY_API_KEY="orr_ak_..."
+
+# Or store the key in a local file (supported by the official plugins):
+# export ORRERY_API_KEY_FILE="$HOME/.config/orrery/agent.key"
+```
+
+<Aside type="caution" title="Match PUBLIC_URL exactly">
+  `ORRERY_URL` must match your server's `PUBLIC_URL` host. Orrery's `/mcp` endpoint rejects requests with a mismatched `Host` header. Never commit API keys to git.
+</Aside>
+
+## 2. Choose your harness
+
+<Tabs>
+  <TabItem label="Claude Code (Plugin)">
+    Install the official plugin from [`forge-orbit/orrery-integrations`](https://github.com/forge-orbit/orrery-integrations) (requires Node.js 22+). It configures `/mcp`, automatic run-lifecycle hooks, and `orrery_wait_for_input` inbox waiting in one step:
+
+    ```text
+    /plugin marketplace add forge-orbit/orrery-integrations
+    /plugin install orrery@forge-orbit
+    ```
+
+    See [Claude Code plugin](/orrery-site/docs/integrations/claude-code/) for full details, privacy guarantees, and migration from the older `orrery@orrery` marketplace.
+  </TabItem>
+
+  <TabItem label="Codex CLI (Plugin)">
+    Install the official plugin from [`forge-orbit/orrery-integrations`](https://github.com/forge-orbit/orrery-integrations) (requires Node.js 22+):
+
+    ```sh
+    codex plugin marketplace add forge-orbit/orrery-integrations
+    codex plugin add orrery@forge-orbit
+    ```
+
+    Then open `/hooks` inside Codex to review and trust the installed lifecycle hooks. See [Codex CLI plugin](/orrery-site/docs/integrations/codex/) for details.
+  </TabItem>
+
+  <TabItem label="Cursor">
+    Add `.cursor/mcp.json` to your repository (or add the server in Cursor's MCP settings):
+
+    ```json
+    {
+      "mcpServers": {
+        "orrery": {
+          "url": "https://orrery.example.com/mcp",
+          "headers": {
+            "Authorization": "Bearer <your API key>"
+          }
+        }
+      }
+    }
+    ```
+
+    Cursor infers Streamable HTTP from `url` — omit any `type` field. Note that automatic run-lifecycle hooks are Claude Code and Codex CLI only; Cursor uses all 39 static `/mcp` tools directly.
+  </TabItem>
+
+  <TabItem label="Raw /mcp (any client)">
+    Any MCP client supporting Streamable HTTP can connect directly to `${ORRERY_URL}/mcp` with `Authorization: Bearer <API key>`.
+
+    **Claude Code without plugin:**
+    ```sh
+    claude mcp add --transport http orrery "$ORRERY_URL/mcp" \
+      --header "Authorization: Bearer $ORRERY_API_KEY"
+    ```
+
+    **Codex CLI without plugin (`$CODEX_HOME/config.toml`):**
+    ```toml
+    [mcp_servers.orrery]
+    url = "https://orrery.example.com/mcp"
+    bearer_token_env_var = "ORRERY_API_KEY"
+    ```
+
+    Cloud agents (such as Devin) can also call `orrery_run_checkin` over `/mcp` to report model and harness metadata without installing a local plugin.
+  </TabItem>
+</Tabs>
+
+## Supported harnesses at a glance
+
+| Harness | Status | How it connects |
+| --- | --- | --- |
+| **Claude Code** | Ready | Official plugin (`orrery@forge-orbit`) — `/mcp`, lifecycle hooks & inbox wait |
+| **Codex CLI** | Ready | Official plugin (`orrery@forge-orbit`) — `/mcp`, lifecycle hooks & inbox wait |
+| **Cursor, Devin & cloud agents** | Ready | Static `/mcp` endpoint + `orrery_run_checkin` (no local plugin needed) |
+| **OpenCode** | Planned | npm (`@orrery/opencode-plugin`) |
+| **Hermes** | Planned | PyPI (`hermes plugins install`) |
+
+## Next steps
+
+- [Claude Code plugin](/orrery-site/docs/integrations/claude-code/) — hooks, live inbox waiting, and privacy guarantees.
+- [Codex CLI plugin](/orrery-site/docs/integrations/codex/) — marketplace install and `/hooks` trust flow.
+- [MCP tools reference](/orrery-site/docs/reference/mcp-tools/) — all 39 tools available to your connected agents.

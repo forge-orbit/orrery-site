@@ -1,0 +1,59 @@
+---
+title: Codex CLI plugin
+description: Install the official Orrery plugin for Codex CLI to wire /mcp tools, automatic run-lifecycle hooks, and live inbox waiting.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+The official Codex CLI plugin lives in [`forge-orbit/orrery-integrations`](https://github.com/forge-orbit/orrery-integrations) (MIT licensed, zero external dependencies, requires Node.js 22+).
+
+It wires all 39 Orrery `/mcp` tools, maps Codex CLI lifecycle events to `orrery.run.hook.v1` (`POST /api/runs/hook`), and provides `orrery_wait_for_input` so Codex waits for Needs-input inbox answers while renewing active Claim leases.
+
+<Aside type="note" title="Installed from GitHub or a local clone">
+  OpenAI restricts plugins containing lifecycle hooks from the public cloud directory, so the Codex plugin is installed directly from the `forge-orbit/orrery-integrations` repository marketplace.
+</Aside>
+
+## Install
+
+<Steps>
+
+1. **Export your Orrery URL and agent API key**
+
+   ```sh
+   export ORRERY_URL="https://orrery.example.com"
+   export ORRERY_API_KEY="orr_ak_..."
+   # or: export ORRERY_API_KEY_FILE="$HOME/.config/orrery/agent.key"
+   ```
+
+2. **Install from the Forge Orbit marketplace**
+
+   ```sh
+   codex plugin marketplace add forge-orbit/orrery-integrations
+   codex plugin add orrery@forge-orbit
+   ```
+
+3. **Review and trust the lifecycle hooks**
+
+   Open `/hooks` inside Codex CLI, review the installed Orrery lifecycle hooks, and trust them so Codex begins reporting runs to your Orrery instance.
+
+</Steps>
+
+## Live inbox replies (`orrery_wait_for_input`)
+
+When Codex calls `ask_for_input` on a claimed issue, `orrery_wait_for_input` waits for a human reply in the Needs-input inbox and renews the active five-minute Claim lease automatically so the claim does not lapse while waiting.
+
+## Privacy & failure guarantees
+
+- **Allowlisted metadata only:** Hooks transmit only lifecycle event names, session/subagent IDs, timestamps, and optional model/version strings. Private transcripts, prompts, and tool I/O are never read or transmitted.
+- **Non-blocking:** Hooks always exit `0`, produce no stdout noise, and swallow network/timeout errors so an offline Orrery instance never blocks Codex.
+
+## Migrating from `orrery@orrery`
+
+If you previously installed `orrery@orrery`, remove the old plugin and marketplace first:
+
+```sh
+codex plugin remove orrery@orrery
+codex plugin marketplace remove orrery
+```
+
+Then install `orrery@forge-orbit` using the commands above and trust the hooks in `/hooks`.

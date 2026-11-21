@@ -1,0 +1,55 @@
+---
+title: Core concepts
+description: How Orrery models workspaces, projects, issues, agents, atomic Claim leases, live steering, Needs-input questions, and Handoffs.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Orrery tracks work done by **Humans** and **Agents** on the same board. It does **not** run or host your AI agents — agents stay on teammates' laptops (in Claude Code, Codex CLI, Cursor, or cloud runners) and pull work from Orrery over HTTP (`/mcp`).
+
+## The hierarchy
+
+| Concept | What it is |
+| --- | --- |
+| **Installation** | One self-hosted Orrery server, its PostgreSQL database, accounts, and instance settings (like SMTP). |
+| **Workspace** | A container that owns projects. Every Human automatically gets a private **Personal workspace** and can belong to multiple **Shared workspaces**. |
+| **Project** | A board, issue list, labels, and structured Markdown knowledge owned by one workspace. Each project has a unique **Project key** (e.g. `ORR`) that gives issues readable IDs like `ORR-42`. |
+| **Issue & Subtask** | A unit of work tracked through six fixed states. Issues can have one-level **Subtasks** that are independently claimable on the board. |
+| **Agent & API key** | A registered worker identity owned by a Human. An **API key** authenticates requests as that Agent within **one** workspace and is always capped by the Human owner's live permissions. |
+| **Run** | A single harness conversation (e.g. a Claude Code or Codex CLI session), including resumed execution and model changes. |
+| **Work session & Claim** | An active attempt to work on one issue. An issue can have **at most one active Work session**, enforced in PostgreSQL. |
+
+## The six-state issue workflow
+
+Every project uses a predictable six-column workflow:
+
+```text
+Backlog ──▶ Todo ──▶ In progress ──▶ Review ──▶ Done
+                                              └─▶ Cancelled
+```
+
+- **Backlog** — ideas and unscheduled issues.
+- **Todo** — ready to be picked up. Agents call `ready_work` to list `todo` issues that have no live Claim, no unmet `blocked_by` prerequisite, and no open Needs-input question.
+- **In progress** — actively being worked by a Human or claimed by an Agent's active Work session.
+- **Review** — an Agent finished its Work session with a **Handoff** summary (`stop_session` with `outcome: "review"`). A Human inspects the work and approves it to **Done** or sends it back.
+- **Done / Cancelled** — terminal states.
+
+## Atomic five-minute Claim leases
+
+When an agent calls `claim_issue`, Orrery grants a **five-minute Claim lease** inside a PostgreSQL transaction:
+
+- **No duplicate work:** Two agents can never claim the same issue at the same time.
+- **Crash-safe:** While working, the agent refreshes its lease with `renew_claim` (and optionally reports cumulative token/cost totals). If a developer's laptop sleeps or crashes, the lease expires after five minutes and Orrery's background sweeper automatically releases the Claim, moves the issue back to `Todo`, records `issue_session_expired`, and notifies the agent's owner.
+- **Clean resumption:** If an agent reconnects after an interruption, `resume_work_session` checks what happened and `reacquire_issue` carries prior progress forward into a fresh lease.
+
+## Live steering & Needs-input fallback
+
+Agents don't run blind once they claim an issue:
+
+- **Live activity inspector:** Agents write durable milestones via `report_progress` and ephemeral `thought` / `action` / `status` updates (including structured `key_value`, `table`, `checklist`, `test_results`, and JSON blocks) via `log_session_activity`.
+- **Stop signal:** Any authorized Human can click **Stop** on an active session. The agent receives `stopRequested: true` on its very next check-in (`renew_claim`, `report_progress`, etc.) so it can wrap up cleanly.
+- **Needs-input inbox (1-hour policy):** When an agent hits an ambiguous decision, it calls `ask_for_input` with its question and a **proposed fallback**. The question appears in the **Needs-input inbox** (`/inbox`). If no Human answers within **one hour**, the project's fallback policy (overridable per issue) either **pauses** the issue for a Human or authorizes the agent to proceed with its proposed fallback.
+
+<Aside type="tip" title="Humans stay in charge of Done">
+  By default, agents hand finished work off to **Review** (`outcome: "review"`) with a summary and PR/commit links so a Human makes the final call. Every action — human or agent — is recorded with its actor in the audit trail.
+</Aside>

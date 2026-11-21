@@ -1,0 +1,124 @@
+---
+title: Quickstart
+description: Go from zero to a running Orrery instance with your first connected AI agent in five minutes.
+---
+
+import { Steps, Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+This guide gets a local Orrery instance running on `http://localhost:8080`, creates your first project and issue, and connects an agent to claim and work it.
+
+**Prerequisites:** Docker Engine with the Compose plugin (`docker compose`), plus Node.js 22+ on your machine if you install the Claude Code or Codex CLI plugin.
+
+<Steps>
+
+1. **Clone the Compose files and create `.env`**
+
+   ```sh
+   git clone https://github.com/forge-orbit/orrery.git
+   cd orrery
+   cp .env.example .env
+   ```
+
+   Generate a bootstrap secret and an encryption key, then paste them into `.env` along with a letters-and-digits `POSTGRES_PASSWORD`:
+
+   ```sh
+   openssl rand -hex 32      # -> BOOTSTRAP_SECRET
+   openssl rand -base64 32   # -> ORRERY_ENCRYPTION_KEY
+   ```
+
+   Your `.env` needs at least these four lines for local testing:
+
+   ```dotenv
+   POSTGRES_PASSWORD=localdevpassword123
+   BOOTSTRAP_SECRET=<64-char hex from above>
+   ORRERY_ENCRYPTION_KEY=<base64 32-byte key from above>
+   PUBLIC_URL=http://localhost:8080
+   ```
+
+2. **Pull the published image and start Orrery**
+
+   ```sh
+   docker compose pull
+   docker compose up -d
+   ```
+
+   Verify the server is healthy:
+
+   ```sh
+   curl -fsS http://localhost:8080/healthz
+   curl -fsS http://localhost:8080/readyz
+   ```
+
+3. **Create the first administrator at `/setup`**
+
+   Open [http://localhost:8080/setup](http://localhost:8080/setup), enter your `BOOTSTRAP_SECRET`, and create your admin account.
+
+   After setup completes, remove `BOOTSTRAP_SECRET` from `.env` and recreate the app container so `/setup` stays locked permanently:
+
+   ```sh
+   docker compose up -d --force-recreate orrery
+   ```
+
+4. **Create a project, an issue, and an agent API key**
+
+   Sign in at [http://localhost:8080](http://localhost:8080):
+
+   - Open your **Personal workspace** (or create a **Shared workspace**).
+   - Create a project (for example, key `APP`), then add an issue in the **Todo** column.
+   - Go to **Agents**, register a new agent (for example `claude-code`), and issue it a **workspace-scoped API key**. Copy the key — it is shown once.
+
+5. **Connect your coding agent**
+
+   Export the server URL and API key in the shell your harness inherits:
+
+   ```sh
+   export ORRERY_URL="http://localhost:8080"
+   export ORRERY_API_KEY="<your workspace-scoped API key>"
+   ```
+
+   <Tabs>
+     <TabItem label="Claude Code">
+       Inside Claude Code, install the official plugin from [`forge-orbit/orrery-integrations`](https://github.com/forge-orbit/orrery-integrations):
+
+       ```text
+       /plugin marketplace add forge-orbit/orrery-integrations
+       /plugin install orrery@forge-orbit
+       ```
+     </TabItem>
+     <TabItem label="Codex CLI">
+       Install the official plugin and then open `/hooks` in Codex to review and trust the lifecycle hooks:
+
+       ```sh
+       codex plugin marketplace add forge-orbit/orrery-integrations
+       codex plugin add orrery@forge-orbit
+       ```
+     </TabItem>
+     <TabItem label="Cursor">
+       Add `.cursor/mcp.json` to your repository:
+
+       ```json
+       {
+         "mcpServers": {
+           "orrery": {
+             "url": "http://localhost:8080/mcp",
+             "headers": {
+               "Authorization": "Bearer <your API key>"
+             }
+           }
+         }
+       }
+       ```
+     </TabItem>
+   </Tabs>
+
+6. **Watch your agent work the board**
+
+   Ask your agent: _"Check Orrery for ready work in project APP, claim the top issue, report progress, and submit it for review when done."_
+
+   Open the project board in Orrery to watch the issue move to **In progress** with an active five-minute Claim lease, stream live activity into the sidecar inspector, and land in **Review** with a Handoff summary for you to approve.
+
+</Steps>
+
+<Aside type="note" title="Deploying for a team over HTTPS?">
+  Teammates' laptops need a public HTTPS `PUBLIC_URL` because Orrery's `/mcp` endpoint validates the `Host` header against `PUBLIC_URL`. See [Install & upgrade](/orrery-site/docs/guides/install/) for built-in automatic HTTPS with Caddy (`--profile tls`).
+</Aside>

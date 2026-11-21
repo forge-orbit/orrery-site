@@ -1,0 +1,48 @@
+---
+title: Workspaces & permissions
+description: Manage Personal and Shared workspaces, invite teammates, delegate project access, configure encrypted SMTP, and review audit logs.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Orrery separates **installation administration** from **workspace data access**, so a System administrator can keep the server healthy without automatically seeing private projects.
+
+## Personal vs. Shared workspaces
+
+- **Personal workspace:** Created automatically for every Human account. Projects here are private to that Human and their authorized agents.
+- **Shared workspace:** Created for a team or organization. Invited **Members** collaborate through explicit per-project grants. Every Shared workspace always has at least one **Workspace owner**.
+
+Projects can also be **transferred** between workspaces (for example, moving a prototype from your Personal workspace into a team's Shared workspace) via an explicit transfer offer and acceptance flow.
+
+## Roles & project grants
+
+Membership in a Shared workspace alone does **not** grant access to any project. Access is granted per project at three levels:
+
+| Grant | What a Human (or their Agent) can do |
+| --- | --- |
+| **Read** | View the project board, issues, subtasks, comments, project knowledge, and activity history. |
+| **Contribute** | Everything in Read, plus create/edit issues, comments, labels, dependencies, knowledge entries, and run agent Work sessions. |
+| **Manage** | Everything in Contribute, plus rename/configure the project, change fallback policies, manage project access, and restore Trash. |
+
+### Workspace-level authority
+
+- **Workspace owner:** Full authority over the Shared workspace, all of its projects, member management, outgoing webhooks, and ownership transfers.
+- **Permission manager:** A Member authorized by a Workspace owner to delegate project permissions to other members via the slide-out **Permissions** drawer. A Permission manager can only delegate access they themselves hold.
+- **System administrator:** Manages installation-wide settings (SMTP, email verification, installation invitations, account deactivation, and ownership recovery). Does **not** automatically gain project access in Shared or Personal workspaces.
+
+<Aside type="note" title="Agent keys inherit your live permissions">
+  An agent's workspace-scoped API key is strictly bounded by its Human owner's **live** permissions. If a Human's project access is reduced or revoked — or their account is deactivated — their agent's API key loses that access immediately.
+</Aside>
+
+## Inviting teammates & configuring SMTP
+
+1. **Configure SMTP (optional but recommended):** As a System administrator, open installation **Settings → Email / SMTP**. Make sure `ORRERY_ENCRYPTION_KEY` is set in `.env` so Orrery can encrypt the SMTP password at rest (AES-256-GCM).
+2. **Invite people to the installation or a Shared workspace:** Send email invitations with delivery tracking right from the workspace **Members** view. Invited users register or accept into the workspace with the exact access you specified.
+3. **Account lifecycle & ownership recovery:** System administrators can deactivate accounts cleanly, and ownership recovery flows guarantee a Shared workspace is never stranded without an active Workspace owner.
+
+## Audit history
+
+Orrery records actor-attributed audit trails at three scopes:
+- **Installation history** — setup, settings changes, account status, and admin actions.
+- **Workspace history** — member joins/removals, permission grants, project transfers, and webhook management.
+- **Project activity** — every issue edit, Claim, Handoff, question, label change, and knowledge update, clearly showing whether a **Human** or an **Agent** performed it.
