@@ -1,0 +1,117 @@
+---
+title: Webhooks & notifications
+description: Stay on top of agent handoffs and questions with in-app notifications, and integrate external tools using signed, SSRF-protected outgoing webhooks.
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Orrery keeps both humans and external systems in sync as work moves across your projects.
+
+## In-app notifications (`/notifications`)
+
+The **Notifications** item in the sidebar displays a live unread count badge (polled every 15 seconds) and opens `/notifications`, where you can filter **Unread** vs **All**, click any alert to mark it read and jump straight to the issue, or click **Mark all read**.
+
+Notifications fire automatically for three high-signal events:
+
+| Kind | Trigger | Who gets notified |
+| --- | --- | --- |
+| **Handoff** | An agent submits an issue to `Review` (`issue_review_handoff`) | Issue's human assignee, agent's owner (and issue creator if unassigned). |
+| **Needs input** | An agent asks a blocking question or pauses after 1 hour (`issue_question_asked`, `issue_question_paused`) | Agent's owner and issue's human assignee. |
+| **Session expired** | A 5-minute Claim lease lapses and reverts the issue to `Todo` (`issue_session_expired`) | Agent's owner and issue's human assignee. |
+
+Notifications are always filtered by live project access and Trash state — if access is revoked or an issue is trashed, its notifications disappear immediately. Read notifications are pruned after 90 days (180 days max retention).
+
+## Workspace-scoped outgoing webhooks
+
+**Workspace owners** (in Shared or Personal workspaces) can manage up to **20 outgoing webhook endpoints** per workspace under **Workspace → Webhooks**.
+
+<Aside type="note" title="Requires ORRERY_ENCRYPTION_KEY">
+  Webhook signing secrets are encrypted at rest with AES-256-GCM. Make sure `ORRERY_ENCRYPTION_KEY` is configured in `.env` before creating or rotating webhooks.
+</Aside>
+
+### What you can configure
+
+- **Project filter:** Subscribe to all projects in the workspace or select specific projects. (If a selected project is later transferred out of the workspace, it is removed from the subscription automatically without widening scope.)
+- **Event filter:** Subscribe to all **31 project activity events** (issues, comments, labels, dependencies, links, handoffs, questions, stop signals, session expiries, knowledge updates) or pick an exact subset.
+- **Test & inspect:** Click **Send test** to enqueue a `webhook.test` event (does not affect failure counters) and view the last **50 delivery attempts** (HTTP status, latency, retries, and sanitized errors) in the live delivery log drawer.
+- **Rotate secret:** Rotate a webhook's `whsec_...` signing secret anytime from the UI; the new secret is displayed once.
+
+### Delivery guarantees & SSRF protection
+
+- **Transactional Postgres outbox:** Deliveries are enqueued in the exact same database transaction as the activity event — never dropped on a crash.
+- **Exponential backoff:** Non-`2xx` responses, timeouts (10-second limit), and network errors retry up to **5 attempts** (`immediate`, `+30s`, `+2m`, `+10m`, `+30m`).
+- **Auto-disable circuit breaker:** After **10 consecutive exhausted deliveries**, Orrery automatically disables the webhook with reason `consecutive_failures`. Re-enabling it resets the counter.
+- **Default-deny DNS-pinned SSRF guard:** Outgoing webhooks require `https://`, disable redirects, and reject loopback, RFC 1918 private, CGNAT, link-local, cloud-metadata (`169.254.169.254`), and IPv6 local addresses at DNS resolution time — pinning the validated IP on connect. To deliver to an internal LAN receiver, set `ORRERY_WEBHOOK_ALLOW_PRIVATE_URLS=true` in `.env` and restart Orrery.
+
+### Payload format & headers
+
+Every webhook delivery sends a concise `version: 1` metadata envelope (never leaking full private Markdown bodies into third-party logs):
+
+```json
+{
+  "id": "whd_01J...",
+  "version": 1,
+  "event": "issue_review_handoff",
+  "occurredAt": "2026-11-22T04:00:00.000Z",
+  "workspaceId": "ws_01J...",
+  "project": { "id": "prj_01J...", "key": "ORR", "name": "Orrery" },
+  "issue": { "id": "iss_01J...", "number": 42, "identifier": "ORR-42", "title": "Rate-limit import API", "status": "review" },
+  "knowledgeEntry": null,
+  "actor": { "kind": "agent", "id": "agt_01J...", "displayName": "claude-code" },
+  "summary": "Submitted ORR-42 for review"
+}
+```
+
+Every request carries these headers:
+
+| Header | Value |
+| --- | --- |
+| `X-Orrery-Delivery` | Unique delivery ID |
+| `X-Orrery-Event` | Activity event name (e.g. `issue_review_handoff`) or `webhook.test` |
+| `X-Orrery-Timestamp` | Unix timestamp in seconds |
+| `X-Orrery-Signature-256` | `sha256=<hex>` HMAC-SHA256 of `${timestamp}.${rawBody}` using your `whsec_` secret |
+
+### Verifying webhook signatures
+
+Always verify `X-Orrery-Signature-256` against the **raw request body bytes** and reject timestamps older than a few minutes to prevent replay attacks:
+
+<Tabs>
+  <TabItem label="Node.js (TypeScript)">
+    ```ts
+    import { createHmac, timingSafeEqual } from 'node:crypto';
+
+    export function verifyOrreryWebhook(
+      rawBody: string,
+      timestamp: string,
+      signatureHeader: string,
+      secret: string,
+    ): boolean {
+      const ageSeconds = Math.abs(Date.now() / 1000 - Number(timestamp));
+      if (!Number.isFinite(ageSeconds) || ageSeconds > 300) return false;
+
+      const expected =
+        'sha256=' + createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex');
+
+      const a = Buffer.from(signatureHeader);
+      const b = Buffer.from(expected);
+      return a.length === b.length && timingSafeEqual(a, b);
+    }
+    ```
+  </TabItem>
+  <TabItem label="Python">
+    ```python
+    import hashlib, hmac, time
+
+    def verify_orrery_webhook(raw_body: bytes, timestamp: str, signature_header: str, secret: str) -> bool:
+        try:
+            if abs(time.time() - int(timestamp)) > 300:
+                return False
+        except ValueError:
+            return False
+
+        signed = f"{timestamp}.".encode() + raw_body
+        expected = "sha256=" + hmac.new(secret.encode(), signed, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(signature_header, expected)
+    ```
+  </TabItem>
+</Tabs>
