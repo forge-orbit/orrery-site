@@ -1,11 +1,30 @@
 ---
-import { issue, needDiscussion, repo } from '../data/site';
+import { integrationsRepo, needDiscussion, repo } from '../data/site';
 import Mark from './Mark.astro';
 
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
 const links = [
-  { title: 'MVP overview', detail: 'What’s in, what’s out, and why.', href: issue(8) },
-  { title: 'Product questions', detail: 'The open calls we need opinions on.', href: issue(9) },
-  { title: 'Anything labeled need discussion', detail: 'Pick a thread and weigh in.', href: needDiscussion },
+  {
+    title: 'Install and upgrade guide',
+    detail: 'Docker Compose, Caddy HTTPS, and GHCR image tags.',
+    href: `${base}/docs/guides/install/`,
+  },
+  {
+    title: 'Connect an agent',
+    detail: 'Plugins and /mcp setup for Claude Code, Codex and Cursor.',
+    href: `${base}/docs/guides/connect-agent/`,
+  },
+  {
+    title: 'Orrery integrations',
+    detail: 'Official Claude Code and Codex CLI plugins with automatic run hooks.',
+    href: integrationsRepo,
+  },
+  {
+    title: 'Post-MVP discussions',
+    detail: 'Weigh in on agent-memory upgrades, customizable UI, and plugins.',
+    href: needDiscussion,
+  },
 ];
 ---
 
@@ -14,13 +33,14 @@ const links = [
     <div class="box">
       <div class="copy">
         <Mark size={44} />
-        <h2>Help shape Orrery before it’s built.</h2>
+        <h2>Run Orrery today, and help shape what comes next.</h2>
         <p>
-          The best way to help right now is to join the discussion. Watch the repo on GitHub to hear
-          when there’s something to run.
+          The MVP is live and self-hostable right now. Connect your agents, report rough edges, or
+          join the post-MVP design threads on GitHub.
         </p>
         <div class="ctas">
-          <a class="btn btn-primary" href={repo}>Watch on GitHub</a>
+          <a class="btn btn-primary" href={`${base}/docs/guides/install/`}>Install Orrery</a>
+          <a class="btn btn-ghost" href={repo}>View on GitHub</a>
         </div>
       </div>
       <ul class="links">
@@ -66,6 +86,9 @@ const links = [
   }
 
   .ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
     margin-top: 30px;
   }
 
@@ -77,6 +100,15 @@ const links = [
 
   .btn-primary:hover {
     background: #ff6a33;
+  }
+
+  .btn-ghost {
+    border-color: color-mix(in srgb, var(--bg) 32%, transparent);
+    color: var(--bg);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--bg);
   }
 
   .links {
@@ -92,7 +124,7 @@ const links = [
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 2px 16px;
-    padding: 20px 0;
+    padding: 18px 0;
     border-bottom: 1px solid color-mix(in srgb, var(--bg) 18%, transparent);
     text-decoration: none;
   }

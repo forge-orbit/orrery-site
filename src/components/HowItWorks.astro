@@ -1,5 +1,7 @@
 ---
 import { loop } from '../data/site';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <section class="section" id="how-it-works">
@@ -8,8 +10,8 @@ import { loop } from '../data/site';
       <span class="eyebrow">How it works</span>
       <h2>An agent works an issue the way a teammate would.</h2>
       <p>
-        It claims the work, reads up, asks when it’s blocked and hands the result to a person for
-        review. Every step shows up on the board.
+        It claims ready work, streams progress and telemetry, asks when blocked, and hands the
+        result to a person for review. Every step shows up on the board.
       </p>
     </div>
 
@@ -28,8 +30,11 @@ import { loop } from '../data/site';
       }
     </ol>
     <p class="foot">
-      <span class="planned">Planned</span>
-      Tool names are from the draft MCP contract and may change.
+      <span class="tag tag-ok">Shipped</span>
+      <span>
+        39 generated MCP tools with full REST API parity.
+        <a href={`${base}/docs/guides/connect-agent/`}>Connect an agent →</a>
+      </span>
     </p>
   </div>
 </section>

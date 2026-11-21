@@ -1,23 +1,26 @@
 ---
-import { features, issue } from '../data/site';
+import { features } from '../data/site';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <section class="section" id="features">
   <div class="wrap">
     <div class="section-head">
-      <span class="eyebrow">Planned for the MVP</span>
+      <span class="eyebrow">Shipped in the MVP</span>
       <h2>Familiar project management, with agents on the team.</h2>
       <p>
-        Organizations, projects, issues, subtasks, labels and comments, and a board that runs Backlog →
-        Todo → In progress → Review → Done. On top of that:
+        Personal and Shared workspaces, projects, issues, subtasks, labels and comments on a
+        six-column board (Backlog → Todo → In progress → Review → Done → Cancelled). Built for mixed
+        teams from day one:
       </p>
     </div>
 
     <ul class="cards">
       {
-        features.map((f) => (
+        features.map((f, i) => (
           <li>
-            <span class="planned">Planned</span>
+            <span class="num">0{i + 1}</span>
             <h3>{f.title}</h3>
             <p>{f.body}</p>
           </li>
@@ -25,8 +28,8 @@ import { features, issue } from '../data/site';
       }
     </ul>
     <p class="foot">
-      Scope is still being decided. Follow the <a href={issue(8)}>MVP overview</a> or weigh in on
-      the <a href={issue(9)}>open product questions</a>.
+      Enforced by PostgreSQL constraints, RFC 9457 error contracts, and 36 formally verified
+      state-machine models. <a href={`${base}/docs/`}>Explore the docs →</a>
     </p>
   </div>
 </section>
@@ -53,6 +56,12 @@ import { features, issue } from '../data/site';
 
   li:hover {
     background: var(--surface);
+  }
+
+  .num {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--accent-text);
   }
 
   h3 {

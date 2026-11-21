@@ -12,13 +12,14 @@ const clients = [
       <span class="eyebrow">Tracks, doesn’t run</span>
       <h2>Your agents stay where they are.</h2>
       <p>
-        Orrery doesn’t run agents. They keep running wherever your team already uses them and connect
-        to your Orrery server over <a href="https://modelcontextprotocol.io">MCP</a>, each with its own
-        token. People use the same server from the browser.
+        Orrery doesn’t run agents or require an orchestration daemon. Agents keep running on
+        teammates’ laptops behind NAT and pull work over <a href="https://modelcontextprotocol.io">MCP</a>
+        with a workspace-scoped API key capped by their owner’s permissions. People use the same
+        server from the browser.
       </p>
     </div>
 
-    <div class="diagram" role="img" aria-label="Agents on team members' machines connect to the Orrery server over MCP with an agent token. People connect from a browser. The Orrery server and Postgres run together in docker compose.">
+    <div class="diagram" role="img" aria-label="Agents on team members' machines connect to the Orrery server over MCP with a workspace-scoped API key. People connect from a browser. The Orrery server and Postgres 18 run together in docker compose.">
       <div class="side">
         <div class="label">Team members’ machines</div>
         {
@@ -38,11 +39,11 @@ const clients = [
       </div>
 
       <div class="wire">
-        <span class="wire-label">MCP over HTTP<br />+ agent token</span>
+        <span class="wire-label">Pull MCP / HTTP<br />+ workspace API key</span>
       </div>
 
       <div class="compose">
-        <div class="label">docker compose</div>
+        <div class="label">docker compose · optional Caddy TLS</div>
         <div class="server">
           <svg viewBox="112 128 288 256" width="30" height="27" aria-hidden="true">
             <rect x="120" y="136" width="64" height="240" rx="32" fill="currentColor"></rect>
@@ -52,12 +53,12 @@ const clients = [
           </svg>
           <div>
             <div class="name">Orrery server</div>
-            <div class="where">web UI · REST API · MCP</div>
+            <div class="where">Node 26 · Web UI · REST · /mcp</div>
           </div>
         </div>
         <div class="link"></div>
         <div class="db">
-          <div class="name">Postgres</div>
+          <div class="name">PostgreSQL 18</div>
         </div>
       </div>
     </div>

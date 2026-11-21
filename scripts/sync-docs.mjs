@@ -11,8 +11,8 @@
 //   DOCS_REF     Branch or tag to clone. Default: main
 //   BASE_PATH    Same as astro.config.mjs. Used to rewrite links between docs pages.
 //
-// Folders under docs/ that are for contributors' tools, not readers, are never published (see
-// `internal` below).
+// Folders under docs/ that are for contributors' tools or non-page specs, not readers, are never
+// published (see `internal` below).
 //
 // On CI (CI=true) a failed clone fails the build, so a network problem can't silently
 // publish the placeholder. A clone that works but has no docs/ falls back to the placeholder.
@@ -30,12 +30,15 @@ const placeholder = join(root, 'docs-placeholder');
 const repo = process.env.DOCS_REPO ?? 'https://github.com/forge-orbit/orrery.git';
 const ref = process.env.DOCS_REF ?? 'main';
 const base = (process.env.BASE_PATH ?? '/orrery-site').replace(/\/$/, '');
-const editBase = `https://github.com/forge-orbit/orrery/edit/${ref}/docs/`;
+const repoWebBase = 'https://github.com/forge-orbit/orrery';
+const editBase = `${repoWebBase}/edit/${ref}/docs/`;
+const blobBase = `${repoWebBase}/blob/${ref}/`;
 const isMarkdown = (f) => /\.(md|mdx)$/i.test(f);
 
 // Top-level folders in docs/ that stay in the repo but never reach the website.
 // agents/: configuration that coding agents read (issue tracker, triage labels, domain docs).
-const internal = ['agents'];
+// formal/: TLA+ models (.tla/.cfg), not Starlight Markdown pages.
+const internal = ['agents', 'formal'];
 const isPublished = (rel) => !internal.includes(rel.split('/')[0]);
 
 function log(msg) {
@@ -86,7 +89,7 @@ function pageUrl(rel) {
  * - README.md becomes the section index,
  * - a missing `title` comes from the first "# Heading",
  * - "Edit page" points at the file in forge-orbit/orrery,
- * - relative links to other .md files point at their pages.
+ * - relative links to other .md files point at their pages (or GitHub if outside published docs/).
  */
 function adapt(text, rel) {
   let front = '';
@@ -109,9 +112,19 @@ function adapt(text, rel) {
   }
 
   const fromDir = posix.dirname(rel);
-  body = body.replace(/\]\((?!https?:|#|\/)([^)\s]+?\.mdx?)(#[^)\s]*)?\)/gi, (_, target, hash = '') => {
+  body = body.replace(/\]\((?!https?:|mailto:|#|\/)([^)\s]+?)(#[^)\s]*)?\)/gi, (full, target, hash = '') => {
     const resolved = posix.normalize(posix.join(fromDir, target));
-    return `](${pageUrl(resolved)}${hash})`;
+    if (resolved.startsWith('../')) {
+      const repoPath = resolved.replace(/^(\.\.\/)+/, '');
+      return `](${blobBase}${repoPath}${hash})`;
+    }
+    if (!isPublished(resolved)) {
+      return `](${blobBase}docs/${resolved}${hash})`;
+    }
+    if (isMarkdown(resolved)) {
+      return `](${pageUrl(resolved)}${hash})`;
+    }
+    return full;
   });
 
   return `---\n${front.trim()}\n---\n\n${body}`;
@@ -136,7 +149,7 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
 const upstream = findUpstream();
-if (upstream && walk(upstream).some(isMarkdown)) {
+if (upstream && walk(upstream).some((f) => isPublished(relative(upstream, f).split('\\').join('/')) && isMarkdown(f))) {
   copyUpstream(upstream);
   log(`copied docs from ${process.env.DOCS_SOURCE ?? `${repo}@${ref}`}`);
 } else {

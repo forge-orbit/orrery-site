@@ -19,6 +19,8 @@
   /* Orange darkened for small text on cream (meets 4.5:1). */
   --accent-text: #b13c0e;
   --accent-soft: rgb(242 86 29 / 0.1);
+  --ok: #1f7a3f;
+  --ok-soft: rgb(31 122 63 / 0.11);
 
   --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
   --font-body: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
@@ -41,6 +43,8 @@
     --line-strong: rgb(246 243 236 / 0.26);
     --accent-text: #ff8152;
     --accent-soft: rgb(242 86 29 / 0.16);
+    --ok: #46c270;
+    --ok-soft: rgb(70 194 112 / 0.14);
   }
 }
 
@@ -173,10 +177,10 @@ p {
   color: var(--muted);
 }
 
-.planned {
+.tag {
   display: inline-block;
   padding: 2px 9px;
-  border: 1px dashed var(--line-strong);
+  border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   font-family: var(--font-mono);
   font-size: 0.68rem;
@@ -184,6 +188,18 @@ p {
   text-transform: uppercase;
   color: var(--muted);
   white-space: nowrap;
+}
+
+.tag-ok {
+  border-color: color-mix(in srgb, var(--ok) 35%, transparent);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.tag-muted {
+  border-style: dashed;
+  border-color: var(--line-strong);
+  color: var(--muted);
 }
 
 .btn {
