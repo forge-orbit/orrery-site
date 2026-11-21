@@ -1,10 +1,12 @@
 ---
-import { issue, toolGroups } from '../data/site';
+import { repo, toolGroups } from '../data/site';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 const points = [
-  'One `docker compose up`: the Orrery server plus Postgres.',
-  'Your issues, your vault and your agents’ activity stay on your own server.',
-  'MIT licensed. Everything an agent can do over MCP is also in a REST API.',
+  'One `docker compose pull && docker compose up -d` — add `--profile tls` for automatic HTTPS via Caddy.',
+  'Your workspaces, issues, project knowledge and agent activity stay on your own server.',
+  'AGPL-3.0 licensed. Every MCP tool has a matching REST endpoint (123 operations total).',
 ];
 
 const md = (s: string) => s.replace(/`([^`]+)`/g, '<code>$1</code>');
@@ -14,10 +16,10 @@ const md = (s: string) => s.replace(/`([^`]+)`/g, '<code>$1</code>');
   <div class="wrap">
     <div class="section-head">
       <span class="eyebrow">Self-hosted</span>
-      <h2>One command to run. One line to connect an agent.</h2>
+      <h2>One command to run. One plugin to connect an agent.</h2>
       <p>
-        The plan is a single Go binary with the React web app built in, next to Postgres. The tech
-        direction is <a href={issue(1)}>still under discussion</a>.
+        Published to GHCR as a single Docker image (TypeScript on Node 26, Hono, Drizzle, React)
+        backed by PostgreSQL 18, with an optional Caddy profile for automatic HTTPS.
       </p>
     </div>
 
@@ -25,24 +27,30 @@ const md = (s: string) => s.replace(/`([^`]+)`/g, '<code>$1</code>');
       <div class="panel">
         <div class="panel-head">
           <h3>Run it yourself</h3>
-          <span class="planned">Planned</span>
+          <span class="tag tag-ok">GHCR · Compose</span>
         </div>
-        <pre class="terminal"><code><span class="c"># not available yet</span>
-<span class="p">$ </span>docker compose up</code></pre>
+        <pre class="terminal"><code><span class="c"># clone, configure .env, and pull the published image</span>
+<span class="p">$ </span>git clone https://github.com/forge-orbit/orrery.git &amp;&amp; cd orrery
+<span class="p">$ </span>cp .env.example .env
+<span class="p">$ </span>docker compose pull &amp;&amp; docker compose up -d</code></pre>
         <ul class="points">
           {points.map((p) => <li set:html={md(p)} />)}
         </ul>
+        <p class="small">
+          Full setup, Caddy HTTPS, and upgrades in the
+          <a href={`${base}/docs/guides/install/`}>Install guide →</a>
+        </p>
       </div>
 
       <div class="panel">
         <div class="panel-head">
-          <h3>Connect an agent</h3>
-          <span class="planned">Planned</span>
+          <h3>Static /mcp &amp; tool contract</h3>
+          <span class="tag">39 MCP tools</span>
         </div>
-        <pre class="terminal"><code><span class="c"># each agent gets its own token, e.g. in Claude Code</span>
+        <pre class="terminal"><code><span class="c"># connect any MCP client directly (or use the plugins above)</span>
 <span class="p">$ </span>claude mcp add --transport http orrery \
     https://orrery.example.com/mcp \
-    --header "Authorization: Bearer &lt;agent token&gt;"</code></pre>
+    --header "Authorization: Bearer $ORRERY_API_KEY"</code></pre>
         <dl class="tools">
           {
             toolGroups.map((g) => (
@@ -57,7 +65,12 @@ const md = (s: string) => s.replace(/`([^`]+)`/g, '<code>$1</code>');
             ))
           }
         </dl>
-        <p class="small">Draft contracts are in <a href={issue(4)}>#4</a> and may change.</p>
+        <p class="small">
+          25 of 39 generated tools shown — see
+          <a href={`${repo}/blob/main/contract/mcp-tools.json`}>mcp-tools.json</a>,
+          <a href="#integrations">harness plugins</a>, or the
+          <a href={`${base}/docs/guides/connect-agent/`}>Connect an agent guide</a>.
+        </p>
       </div>
     </div>
   </div>
@@ -128,7 +141,7 @@ const md = (s: string) => s.replace(/`([^`]+)`/g, '<code>$1</code>');
 
   .tools > div {
     display: grid;
-    grid-template-columns: 64px 1fr;
+    grid-template-columns: 82px 1fr;
     gap: 12px;
     align-items: baseline;
   }

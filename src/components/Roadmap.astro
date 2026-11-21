@@ -1,26 +1,34 @@
 ---
-import { issue, later, milestones } from '../data/site';
+import { issue, later, milestones, version } from '../data/site';
 ---
 
 <section class="section" id="roadmap">
   <div class="wrap">
     <div class="section-head">
       <span class="eyebrow">Roadmap</span>
-      <h2>Seven milestones to an MVP. All open for discussion.</h2>
-      <p>Each milestone is a GitHub issue. Nothing has started yet, so now is the best time to shape it.</p>
+      <h2>MVP complete. Here’s what shipped and what’s next.</h2>
+      <p>
+        Milestones M0–M4 and M6 are live in {version}. The Obsidian-like Shared vault (M5) was
+        dropped as not planned to keep Orrery focused on agent-first project management.
+      </p>
     </div>
 
     <ol class="milestones">
       {
         milestones.map((m) => (
-          <li>
+          <li class={m.status}>
             <a href={issue(m.n)}>
               <span class="id">{m.id}</span>
               <span class="title">
-                {m.title}
+                <span class="name">{m.title}</span>
                 {m.detail && <span class="detail">{m.detail}</span>}
               </span>
-              <span class="state">#{m.n} →</span>
+              <span class="state">
+                <span class={`tag ${m.status === 'done' ? 'tag-ok' : 'tag-muted'}`}>
+                  {m.status === 'done' ? 'Shipped' : 'Dropped'}
+                </span>
+                <span class="issue-num">#{m.n} →</span>
+              </span>
             </a>
           </li>
         ))
@@ -28,8 +36,16 @@ import { issue, later, milestones } from '../data/site';
     </ol>
 
     <div class="later">
-      <span class="label">Later</span>
-      <ul>{later.map((l) => <li>{l}</li>)}</ul>
+      <span class="label">Post-MVP</span>
+      <ul>
+        {
+          later.map((item) => (
+            <li>
+              <a href={item.href}>{item.label} →</a>
+            </li>
+          ))
+        }
+      </ul>
     </div>
   </div>
 </section>
@@ -58,6 +74,16 @@ import { issue, later, milestones } from '../data/site';
     background: var(--surface);
   }
 
+  .milestones li.dropped .id,
+  .milestones li.dropped .name {
+    color: var(--muted);
+  }
+
+  .milestones li.dropped .name {
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+  }
+
   .id {
     font-family: var(--font-mono);
     font-size: 0.85rem;
@@ -81,7 +107,7 @@ import { issue, later, milestones } from '../data/site';
   .state {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     font-family: var(--font-mono);
     font-size: 0.75rem;
     color: var(--muted);
@@ -113,12 +139,20 @@ import { issue, later, milestones } from '../data/site';
     list-style: none;
   }
 
-  .later li {
+  .later a {
+    display: inline-block;
     padding: 5px 12px;
     border: 1px dashed var(--line-strong);
     border-radius: var(--radius-pill);
     font-size: 0.85rem;
     color: var(--muted);
+    text-decoration: none;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .later a:hover {
+    border-color: var(--accent);
+    color: var(--text);
   }
 
   @media (max-width: 560px) {

@@ -1,7 +1,8 @@
 ---
-import { issue, repo } from '../data/site';
+import { repo, version } from '../data/site';
 
-// A concept sketch of the board. It is illustrative only and labeled as such on the page.
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
 const columns = [
   {
     name: 'Todo',
@@ -14,7 +15,7 @@ const columns = [
         key: 'ORR-42',
         title: 'Rate-limit the import API',
         who: { kind: 'agent', name: 'claude-code', owner: 'maya' },
-        note: 'Writing tests · 2m ago',
+        note: 'Lease active · 14.2k tok · 2m ago',
       },
       {
         key: 'ORR-38',
@@ -30,7 +31,7 @@ const columns = [
         key: 'ORR-35',
         title: 'Move settings to the new form',
         who: { kind: 'agent', name: 'codex', owner: 'ari' },
-        note: 'Submitted for review',
+        note: 'Handoff ready for review',
       },
     ],
   },
@@ -50,22 +51,22 @@ const columns = [
   <div class="wrap grid">
     <div class="copy">
       <p class="note">
-        <span>In design. Nothing to install yet.</span>
-        <a href={issue(8)}>Read the MVP plan →</a>
+        <span>MVP complete ({version}). Self-host today.</span>
+        <a href={`${base}/docs/guides/install/`}>Install guide →</a>
       </p>
       <h1>Project management for teams of humans <em>and</em> AI&nbsp;agents.</h1>
       <p class="lede">
-        One board for everyone doing the work, plus a shared knowledge base your agents can read and
-        write. Self-hosted, open source, and built around the agents your team already runs.
+        One board for everyone doing the work — with five-minute atomic claims, live steering, and a
+        pull-based MCP endpoint your agents connect to directly. Self-hosted and open source.
       </p>
       <div class="ctas">
-        <a class="btn btn-primary" href={repo}>Follow on GitHub</a>
-        <a class="btn" href={issue(8)}>Join the discussion</a>
+        <a class="btn btn-primary" href="#self-hosted">Quick start</a>
+        <a class="btn" href={repo}>View on GitHub</a>
       </div>
     </div>
 
     <figure class="sketch">
-      <div class="board" role="img" aria-label="Concept sketch of an Orrery board where humans and agents share issues across Todo, In progress and Review.">
+      <div class="board" role="img" aria-label="Illustrative view of an Orrery board where humans and agents share issues across Todo, In progress and Review.">
         {
           columns.map((col) => (
             <div class="col">
@@ -101,10 +102,13 @@ const columns = [
         <div class="ask" aria-hidden="true">
           <div class="ask-head"><span class="dot"></span> Needs input · ORR-42</div>
           <p>Keep the old import endpoint for one more release, or remove it now?</p>
-          <div class="ask-actions"><span>Answer</span></div>
+          <div class="ask-actions">
+            <span class="ask-meta">Fallback in 48m</span>
+            <span class="ask-btn">Answer</span>
+          </div>
         </div>
       </div>
-      <figcaption>Concept sketch, not a product screenshot.</figcaption>
+      <figcaption>Six-column workflow with atomic Claim leases, run telemetry, and a Needs-input inbox.</figcaption>
     </figure>
   </div>
 </section>
@@ -359,11 +363,19 @@ const columns = [
 
   .ask-actions {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     margin-top: 10px;
   }
 
-  .ask-actions span {
+  .ask-meta {
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    opacity: 0.68;
+  }
+
+  .ask-btn {
     padding: 3px 12px;
     background: var(--accent);
     color: #fff;
